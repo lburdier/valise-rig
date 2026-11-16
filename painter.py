@@ -4,6 +4,42 @@ modificateurs appliqués, triangulé, faces nulles supprimées, une seule couche
 conservées (custom / arêtes vives), sans armature ni tangentes."""
 import bpy, bmesh
 import numpy as np
+from mathutils import Vector
+from mathutils.kdtree import KDTree
+def fix_cable(me):
+    bmc = bmesh.new(); bmc.from_mesh(me); bmc.normal_update()
+    lay = bmc.loops.layers.float_vector.get("_nrm")
+    verts = [v.co.copy() for v in bmc.verts]
+    kd = KDTree(len(verts))
+    for i, co in enumerate(verts):
+        kd.insert(co, i)
+    kd.balance()
+    # rayon du tube : distance médiane entre sommets opposés ~ estimée par la plus grande arête de "tour"
+    el = sorted(e.calc_length() for e in bmc.edges)
+    circ_edge = el[int(len(el) * 0.5)] if el else 0.01
+    flip = []
+    for f in bmc.faces:
+        c = f.calc_center_median()
+        # rayon de recherche croissant jusqu'à avoir une section complète
+        r = circ_edge * 4
+        for _ in range(6):
+            pts = kd.find_range(c, r)
+            if len(pts) >= 24:
+                break
+            r *= 1.6
+        cen = sum((p for p, _i, _d in pts), Vector()) / max(len(pts), 1)
+        if f.normal.dot(c - cen) < 0:
+            flip.append(f)
+    if flip:
+        bmesh.ops.reverse_faces(bmc, faces=flip)
+    bmc.normal_update()
+    if lay is not None:
+        for f in bmc.faces:
+            for lp in f.loops:
+                lp[lay] = lp.vert.normal
+    bmc.to_mesh(me); bmc.free()
+    return len(flip)
+
 
 
 def export(context, filepath, rig=None):
@@ -53,6 +89,8 @@ def export(context, filepath, rig=None):
                 me.transform(Mw)
                 if Mw.determinant() < 0:
                     me.flip_normals()
+                if o.name.startswith("Cable_"):
+                    fix_cable(me)
                 me.materials.clear()
                 tmp = bmesh.new(); tmp.from_mesh(me)
                 tmp_me = bpy.data.meshes.new("tmp"); tmp.to_mesh(tmp_me); tmp.free()
