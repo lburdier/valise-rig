@@ -63,7 +63,8 @@ def export(context, filepath, rig=None):
             bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-7)
             bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='EAR_CLIP')
             # triangles d'aire nulle restants
-            zero = [f for f in bm.faces if f.calc_area() < 1e-11]
+            bm.normal_update()
+            zero = [f for f in bm.faces if f.calc_area() < 1e-10 or f.normal.length < 0.5]
             if zero:
                 bmesh.ops.delete(bm, geom=zero, context='FACES')
             loose = [v for v in bm.verts if not v.link_faces]
