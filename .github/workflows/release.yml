@@ -1,0 +1,55 @@
+# Release automatique : à chaque push sur main qui change la version de blender_manifest.toml,
+# le paquet valise_rig-X.Y.Z.zip est construit et publié dans une release GitHub vX.Y.Z.
+# L'updater intégré à l'add-on installe ensuite cette release chez les utilisateurs.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Lire la version du manifest
+        id: v
+        run: |
+          V=$(python -c "import tomllib;print(tomllib.load(open('blender_manifest.toml','rb'))['version'])")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$V" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "La release v$V existe déjà : rien à publier."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Vérifier la syntaxe Python
+        if: steps.v.outputs.exists == 'false'
+        run: python -m py_compile *.py tools/build.py
+
+      - name: Construire le paquet
+        if: steps.v.outputs.exists == 'false'
+        run: python tools/build.py --check
+
+      - name: Publier la release
+        if: steps.v.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.v.outputs.version }}
+          gh release create "v$V" "dist/valise_rig-$V.zip" \
+            --title "Valise Rig $V" \
+            --generate-notes \
+            --target "$GITHUB_SHA"

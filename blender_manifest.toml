@@ -1,0 +1,23 @@
+schema_version = "1.0.0"
+
+id = "valise_rig"
+version = "1.0.0"
+name = "Valise Rig"
+tagline = "Pilote la valise casque et génère des animations prêtes à l'emploi"
+maintainer = "Lucas"
+type = "add-on"
+
+website = "https://github.com/lburdier/valise-rig"
+
+tags = ["Animation", "Rigging", "3D View"]
+
+blender_version_min = "4.4.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 Lucas"]
+
+[permissions]
+network = "Recherche des mises à jour sur les releases GitHub"
+
+[build]
+paths_exclude_pattern = ["__pycache__/", "/.git/", "/.github/", "*.zip", "/tests/", "/tools/", "/dist/"]
