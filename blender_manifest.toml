@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "valise_rig"
-version = "1.0.2"
+version = "1.0.3"
 name = "Valise Rig"
 tagline = "Pilote la valise casque et génère des animations prêtes à l'emploi"
 maintainer = "Lucas"

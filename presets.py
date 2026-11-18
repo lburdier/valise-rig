@@ -225,6 +225,12 @@ def _new_fcurve(act, rig, path, index, group, frames, values):
     fc.update()
 
 
+def _is_ik_control(name):
+    """Os de pilotage des chaînes IK : os IK (CIxx_IK_yy) et cibles accrochées aux connecteurs (xxx_FIN).
+    Ils ne reçoivent pas d'inertie : une clé sur eux décrocherait l'extrémité du câble de son connecteur."""
+    return "_IK_" in name or name.endswith("_FIN")
+
+
 def bake_inertia(rig, act, f0, f1, amplitude=1.0):
     """Cuit l'inertie des câbles (os CVxx_yy du couvercle, CIxx_yy intérieurs) entre f0 et f1."""
     arm = rig.data
@@ -250,7 +256,7 @@ def bake_inertia(rig, act, f0, f1, amplitude=1.0):
 
     chains = {}
     for b in arm.bones:
-        if b.name.startswith("CV") and not b.name.endswith("_FIN"):
+        if b.name.startswith("CV") and not _is_ik_control(b.name):
             chains.setdefault(b.name.rsplit("_", 1)[0], []).append(b.name)
     for cname in sorted(chains):
         bones = sorted(chains[cname])
@@ -289,7 +295,7 @@ def bake_inertia(rig, act, f0, f1, amplitude=1.0):
             count += 1
 
     for pb in rig.pose.bones:
-        if not pb.name.startswith("CI"):
+        if not pb.name.startswith("CI") or _is_ik_control(pb.name):
             continue
         con = next((c for c in pb.constraints if c.type == 'TRANSFORM'), None)
         dz = con.to_min_z if con else 0.0
